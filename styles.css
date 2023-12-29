@@ -81,10 +81,12 @@ header p {
 }
 
 footer {
-    background-color: #000; /* Updated background color */
+    background-color: #000; /* Set background color to black */
+    background-image: url("https://www.transparenttextures.com/patterns/stardust.png");
     padding: 10px 0;
     text-align: center;
     position: relative;
+	
 }
 
 .stars {
@@ -113,7 +115,7 @@ footer {
 }
 
 /*  FOLLOW*/
-.Follow {	  background:url("https://pbs.twimg.com/profile_images/959092900708544512/v4Db9QRv_bigger.jpg")no-repeat center / contain;
+.Follow {	  background:url("https://yt3.googleusercontent.com/UNdk7EVcA5oB6yUn0qWeHD_Q0MYedtxgvJnf0YRAIz2l53FfyTFdgPrf37H-ura0Z3Heu-VC=s176-c-k-c0x00ffffff-no-rj")no-repeat center / contain;
 	width: 50px;
 	height: 50px;
 	bottom: 9px;
