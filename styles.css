@@ -51,23 +51,16 @@ header p {
     border-image: linear-gradient(to right, violet, indigo, blue, green, yellow, orange, red); /* Rainbow border */
     border-image-slice: 1; /* Ensure the entire border is a gradient */
     border-radius: 18%; /* Make it round */
-    transition: border-color 0.3s ease;
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease; /* Transition properties */
     font-size: 1.2em;
-    animation: rainbowBorder 5s linear infinite; /* Rainbow border animation */
 }
 
 .cta-button:hover {
-    border-color: transparent; /* Change the border color on hover */
+    transform: scale(1.1) rotate(8deg);
+    border-width: 5px;
+    border-radius: 30%;
 }
 
-@keyframes rainbowBorder {
-    0% {
-        border-image-source: linear-gradient(to right, violet, indigo, blue, green, yellow, orange, red);
-    }
-    100% {
-        border-image-source: linear-gradient(to right, violet, indigo, blue, green, yellow, orange, red);
-    }
-}
 
 footer {
     background-color: #000; /* Updated background color */
@@ -94,5 +87,9 @@ footer {
     background: linear-gradient(to right, violet, indigo, blue, green, yellow, orange, red);
     bottom: 0;
     border-radius: 18%; /* Make it round */
-    animation: rainbowBorder 5s linear infinite; /* Rainbow border animation */
+    transition: background-color 0.3s ease; /* Transition background color on hover */
+}
+
+.rainbow-line:hover {
+    background-color: #333; /* Darker background on hover */
 }
