@@ -42,25 +42,43 @@ header p {
 
 .cta-button {
     display: inline-block;
-    padding: 20px 30px; /* Increased button padding */
-    margin-top: 10px; /* Spaced more away from the text above it */
+    margin: 10px;
+    padding: 20px 30px;
     text-decoration: none;
     color: #fff;
-    background: #000; /* Black background */
-    border: 2px solid transparent; /* Transparent border */
-    border-image: linear-gradient(to right, violet, indigo, blue, green, yellow, orange, red); /* Rainbow border */
-    border-image-slice: 1; /* Ensure the entire border is a gradient */
-    border-radius: 18%; /* Make it round */
-    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease; /* Transition properties */
+    background: #000;
+    border: 2px solid red; /* Set the border color to red */
+    border-radius: 18%;
+    transition: transform 0.2s ease, border-width 0.3s ease, border-radius 0.3s ease;
     font-size: 1.2em;
 }
 
 .cta-button:hover {
-    transform: scale(1.1) rotate(8deg);
+    transform: scale(1.1) rotate(360deg);
     border-width: 5px;
     border-radius: 30%;
+    border-color: 000; /* Change the border color on hover */
 }
 
+.cta-button.secondary-button {
+    display: inline-block;
+    margin: 10px;
+    padding: 20px 30px;
+    text-decoration: none;
+    color: #fff;
+    background: #000;
+    border: 2px solid red; /* Set the border color to red */
+    border-radius: 18%;
+    transition: transform 0.2s ease, border-width 0.3s ease, border-radius 0.3s ease;
+    font-size: 1.2em;
+}
+
+.cta-button.secondary-button:hover {
+    transform: scale(1.1) rotate(360deg);
+    border-width: 5px;
+    border-radius: 30%;
+    border-color: 000; /* Change the border color on hover */
+}
 
 footer {
     background-color: #000; /* Updated background color */
@@ -84,7 +102,7 @@ footer {
     position: absolute;
     width: 100%;
     height: 2px;
-    background: linear-gradient(to right, violet, indigo, blue, green, yellow, orange, red);
+    background: linear-gradient(to right, red, red); /* Set the rainbow line to red */
     bottom: 0;
     border-radius: 18%; /* Make it round */
     transition: background-color 0.3s ease; /* Transition background color on hover */
