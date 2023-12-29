@@ -1,192 +1,228 @@
+import * as PIXI from "https://cdn.skypack.dev/pixi.js@5.x";
+import { KawaseBlurFilter } from "https://cdn.skypack.dev/@pixi/filter-kawase-blur@3.2.0";
+import SimplexNoise from "https://cdn.skypack.dev/simplex-noise@3.0.0";
+import hsl from "https://cdn.skypack.dev/hsl-to-hex";
+import debounce from "https://cdn.skypack.dev/debounce";
 
-
-var scrollToElement = function(el, ms){
-    var speed = (ms) ? ms : 600;
-    $('html,body').animate({
-        scrollTop: $(el).offset().top
-    }, speed);
+// return a random number within a range
+function random(min, max) {
+  return Math.random() * (max - min) + min;
 }
 
-$(document).ready(function() {
-  $('.nav-link').on('click', function(e) {
-    e.preventDefault();
-    var el = $(this).attr('href');
-    scrollToElement(el);
-  });
-  
-  $(window).scroll(function() {
-    var x = $(window).scrollTop();
+// map a number from 1 range to another
+function map(n, start1, end1, start2, end2) {
+  return ((n - start1) / (end1 - start1)) * (end2 - start2) + start2;
+}
 
-    if (x >= 42) {
-      $("#navbar").fadeIn(300);
-    } else {
-      $("#navbar").fadeOut(300);
-    }
+// Create a new simplex noise instance
+const simplex = new SimplexNoise();
 
-  });
+// ColorPalette class
+class ColorPalette {
+  constructor() {
+    this.setColors();
+    this.setCustomProperties();
+  }
+
+  setColors() {
+    // pick a random hue somewhere between 220 and 360
+    this.hue = ~~random(220, 360);
+    this.complimentaryHue1 = this.hue + 30;
+    this.complimentaryHue2 = this.hue + 60;
+    // define a fixed saturation and lightness
+    this.saturation = 95;
+    this.lightness = 50;
+
+    // define a base color
+    this.baseColor = hsl(this.hue, this.saturation, this.lightness);
+    // define a complimentary color, 30 degress away from the base
+    this.complimentaryColor1 = hsl(
+      this.complimentaryHue1,
+      this.saturation,
+      this.lightness
+    );
+    // define a second complimentary color, 60 degrees away from the base
+    this.complimentaryColor2 = hsl(
+      this.complimentaryHue2,
+      this.saturation,
+      this.lightness
+    );
+
+    // store the color choices in an array so that a random one can be picked later
+    this.colorChoices = [
+      this.baseColor,
+      this.complimentaryColor1,
+      this.complimentaryColor2
+    ];
+  }
+
+  randomColor() {
+    // pick a random color
+    return this.colorChoices[~~random(0, this.colorChoices.length)].replace(
+      "#",
+      "0x"
+    );
+  }
+
+  setCustomProperties() {
+    // set CSS custom properties so that the colors defined here can be used throughout the UI
+    document.documentElement.style.setProperty("--hue", this.hue);
+    document.documentElement.style.setProperty(
+      "--hue-complimentary1",
+      this.complimentaryHue1
+    );
+    document.documentElement.style.setProperty(
+      "--hue-complimentary2",
+      this.complimentaryHue2
+    );
+  }
+}
+
+// Orb class
+class Orb {
+  // Pixi takes hex colors as hexidecimal literals (0x rather than a string with '#')
+  constructor(fill = 0x000000) {
+    // bounds = the area an orb is "allowed" to move within
+    this.bounds = this.setBounds();
+    // initialise the orb's { x, y } values to a random point within it's bounds
+    this.x = random(this.bounds["x"].min, this.bounds["x"].max);
+    this.y = random(this.bounds["y"].min, this.bounds["y"].max);
+
+    // how large the orb is vs it's original radius (this will modulate over time)
+    this.scale = 1;
+
+    // what color is the orb?
+    this.fill = fill;
+
+    // the original radius of the orb, set relative to window height
+    this.radius = random(window.innerHeight / 6, window.innerHeight / 3);
+
+    // starting points in "time" for the noise/self similar random values
+    this.xOff = random(0, 1000);
+    this.yOff = random(0, 1000);
+    // how quickly the noise/self similar random values step through time
+    this.inc = 0.002;
+
+    // PIXI.Graphics is used to draw 2d primitives (in this case a circle) to the canvas
+    this.graphics = new PIXI.Graphics();
+    this.graphics.alpha = 0.825;
+
+    // 250ms after the last window resize event, recalculate orb positions.
+    window.addEventListener(
+      "resize",
+      debounce(() => {
+        this.bounds = this.setBounds();
+      }, 250)
+    );
+  }
+
+  setBounds() {
+    // how far from the { x, y } origin can each orb move
+    const maxDist =
+      window.innerWidth < 1000 ? window.innerWidth / 3 : window.innerWidth / 5;
+    // the { x, y } origin for each orb (the bottom right of the screen)
+    const originX = window.innerWidth / 1.25;
+    const originY =
+      window.innerWidth < 1000
+        ? window.innerHeight
+        : window.innerHeight / 1.375;
+
+    // allow each orb to move x distance away from it's x / y origin
+    return {
+      x: {
+        min: originX - maxDist,
+        max: originX + maxDist
+      },
+      y: {
+        min: originY - maxDist,
+        max: originY + maxDist
+      }
+    };
+  }
+
+  update() {
+    // self similar "psuedo-random" or noise values at a given point in "time"
+    const xNoise = simplex.noise2D(this.xOff, this.xOff);
+    const yNoise = simplex.noise2D(this.yOff, this.yOff);
+    const scaleNoise = simplex.noise2D(this.xOff, this.yOff);
+
+    // map the xNoise/yNoise values (between -1 and 1) to a point within the orb's bounds
+    this.x = map(xNoise, -1, 1, this.bounds["x"].min, this.bounds["x"].max);
+    this.y = map(yNoise, -1, 1, this.bounds["y"].min, this.bounds["y"].max);
+    // map scaleNoise (between -1 and 1) to a scale value somewhere between half of the orb's original size, and 100% of it's original size
+    this.scale = map(scaleNoise, -1, 1, 0.5, 1);
+
+    // step through "time"
+    this.xOff += this.inc;
+    this.yOff += this.inc;
+  }
+
+  render() {
+    // update the PIXI.Graphics position and scale values
+    this.graphics.x = this.x;
+    this.graphics.y = this.y;
+    this.graphics.scale.set(this.scale);
+
+    // clear anything currently drawn to graphics
+    this.graphics.clear();
+
+    // tell graphics to fill any shapes drawn after this with the orb's fill color
+    this.graphics.beginFill(this.fill);
+    // draw a circle at { 0, 0 } with it's size set by this.radius
+    this.graphics.drawCircle(0, 0, this.radius);
+    // let graphics know we won't be filling in any more shapes
+    this.graphics.endFill();
+  }
+}
+
+// Create PixiJS app
+const app = new PIXI.Application({
+  // render to <canvas class="orb-canvas"></canvas>
+  view: document.querySelector(".orb-canvas"),
+  // auto adjust size to fit the current window
+  resizeTo: window,
+  // transparent background, we will be creating a gradient background later using CSS
+  transparent: true
 });
 
+app.stage.filters = [new KawaseBlurFilter(30, 10, true)];
 
+// Create colour palette
+const colorPalette = new ColorPalette();
 
+// Create orbs
+const orbs = [];
 
-(function () {
-   'use strict';
-	
-	// WAIT FOR ALL TO BE LOADED
-	window.onload = function() {
-		
-		// add loaded class to html
-		var root = document.documentElement;
-		root.className += ' loaded';
+for (let i = 0; i < 10; i++) {
+  const orb = new Orb(colorPalette.randomColor());
 
-		// TYPING EFFECT
-		Typed.new('#typed', {
-            stringsElement: document.getElementById('typed-strings'),
-			loop: true,
-			typeSpeed: 7,
-			backSpeed: 2,
-			startDelay: 1000,
-			backDelay: 1200
-        });
-	}; // all loaded
-	
-	  
-}());
+  app.stage.addChild(orb.graphics);
 
+  orbs.push(orb);
+}
 
+// Animate!
+if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  app.ticker.add(() => {
+    orbs.forEach((orb) => {
+      orb.update();
+      orb.render();
+    });
+  });
+} else {
+  orbs.forEach((orb) => {
+    orb.update();
+    orb.render();
+  });
+}
 
+document
+  .querySelector(".overlay__btn--colors")
+  .addEventListener("click", () => {
+    colorPalette.setColors();
+    colorPalette.setCustomProperties();
 
-
-/*
-	PLUGINS
-*/
-
-
-
-! function(t, s, e) {
-	"use strict";
-	var i = function(t, s) {
-		var i = this;
-		this.el = t, this.options = {}, Object.keys(r).forEach(function(t) {
-			i.options[t] = r[t]
-		}), Object.keys(s).forEach(function(t) {
-			i.options[t] = s[t]
-		}), this.isInput = "input" === this.el.tagName.toLowerCase(), this.attr = this.options.attr, this.showCursor = !this.isInput && this.options.showCursor, this.elContent = this.attr ? this.el.getAttribute(this.attr) : this.el.textContent, this.contentType = this.options.contentType, this.typeSpeed = this.options.typeSpeed, this.startDelay = this.options.startDelay, this.backSpeed = this.options.backSpeed, this.backDelay = this.options.backDelay, e && this.options.stringsElement instanceof e ? this.stringsElement = this.options.stringsElement[0] : this.stringsElement = this.options.stringsElement, this.strings = this.options.strings, this.strPos = 0, this.arrayPos = 0, this.stopNum = 0, this.loop = this.options.loop, this.loopCount = this.options.loopCount, this.curLoop = 0, this.stop = !1, this.cursorChar = this.options.cursorChar, this.shuffle = this.options.shuffle, this.sequence = [], this.build()
-	};
-	i.prototype = {
-		constructor: i,
-		init: function() {
-			var t = this;
-			t.timeout = setTimeout(function() {
-				for (var s = 0; s < t.strings.length; ++s) t.sequence[s] = s;
-				t.shuffle && (t.sequence = t.shuffleArray(t.sequence)), t.typewrite(t.strings[t.sequence[t.arrayPos]], t.strPos)
-			}, t.startDelay)
-		},
-		build: function() {
-			var t = this;
-			if (this.showCursor === !0 && (this.cursor = s.createElement("span"), this.cursor.className = "typed-cursor", this.cursor.innerHTML = this.cursorChar, this.el.parentNode && this.el.parentNode.insertBefore(this.cursor, this.el.nextSibling)), this.stringsElement) {
-				this.strings = [], this.stringsElement.style.display = "none";
-				var e = Array.prototype.slice.apply(this.stringsElement.children);
-				e.forEach(function(s) {
-					t.strings.push(s.innerHTML)
-				})
-			}
-			this.init()
-		},
-		typewrite: function(t, s) {
-			if (this.stop !== !0) {
-				var e = Math.round(70 * Math.random()) + this.typeSpeed,
-					i = this;
-				i.timeout = setTimeout(function() {
-					var e = 0,
-						r = t.substr(s);
-					if ("^" === r.charAt(0)) {
-						var o = 1;
-						/^\^\d+/.test(r) && (r = /\d+/.exec(r)[0], o += r.length, e = parseInt(r)), t = t.substring(0, s) + t.substring(s + o)
-					}
-					if ("html" === i.contentType) {
-						var n = t.substr(s).charAt(0);
-						if ("<" === n || "&" === n) {
-							var a = "",
-								h = "";
-							for (h = "<" === n ? ">" : ";"; t.substr(s + 1).charAt(0) !== h && (a += t.substr(s).charAt(0), s++, !(s + 1 > t.length)););
-							s++, a += h
-						}
-					}
-					i.timeout = setTimeout(function() {
-						if (s === t.length) {
-							if (i.options.onStringTyped(i.arrayPos), i.arrayPos === i.strings.length - 1 && (i.options.callback(), i.curLoop++, i.loop === !1 || i.curLoop === i.loopCount)) return;
-							i.timeout = setTimeout(function() {
-								i.backspace(t, s)
-							}, i.backDelay)
-						} else {
-							0 === s && i.options.preStringTyped(i.arrayPos);
-							var e = t.substr(0, s + 1);
-							i.attr ? i.el.setAttribute(i.attr, e) : i.isInput ? i.el.value = e : "html" === i.contentType ? i.el.innerHTML = e : i.el.textContent = e, s++, i.typewrite(t, s)
-						}
-					}, e)
-				}, e)
-			}
-		},
-		backspace: function(t, s) {
-			if (this.stop !== !0) {
-				var e = Math.round(70 * Math.random()) + this.backSpeed,
-					i = this;
-				i.timeout = setTimeout(function() {
-					if ("html" === i.contentType && ">" === t.substr(s).charAt(0)) {
-						for (var e = "";
-							"<" !== t.substr(s - 1).charAt(0) && (e -= t.substr(s).charAt(0), s--, !(s < 0)););
-						s--, e += "<"
-					}
-					var r = t.substr(0, s);
-					i.attr ? i.el.setAttribute(i.attr, r) : i.isInput ? i.el.value = r : "html" === i.contentType ? i.el.innerHTML = r : i.el.textContent = r, s > i.stopNum ? (s--, i.backspace(t, s)) : s <= i.stopNum && (i.arrayPos++, i.arrayPos === i.strings.length ? (i.arrayPos = 0, i.shuffle && (i.sequence = i.shuffleArray(i.sequence)), i.init()) : i.typewrite(i.strings[i.sequence[i.arrayPos]], s))
-				}, e)
-			}
-		},
-		shuffleArray: function(t) {
-			var s, e, i = t.length;
-			if (i)
-				for (; --i;) e = Math.floor(Math.random() * (i + 1)), s = t[e], t[e] = t[i], t[i] = s;
-			return t
-		},
-		reset: function() {
-			var t = this;
-			clearInterval(t.timeout);
-			this.el.getAttribute("id");
-			this.el.textContent = "", "undefined" != typeof this.cursor && "undefined" != typeof this.cursor.parentNode && this.cursor.parentNode.removeChild(this.cursor), this.strPos = 0, this.arrayPos = 0, this.curLoop = 0, this.options.resetCallback()
-		}
-	}, i["new"] = function(t, e) {
-		var r = Array.prototype.slice.apply(s.querySelectorAll(t));
-		r.forEach(function(t) {
-			var s = t._typed,
-				r = "object" == typeof e && e;
-			s && s.reset(), t._typed = s = new i(t, r), "string" == typeof e && s[e]()
-		})
-	}, e && (e.fn.typed = function(t) {
-		return this.each(function() {
-			var s = e(this),
-				r = s.data("typed"),
-				o = "object" == typeof t && t;
-			r && r.reset(), s.data("typed", r = new i(this, o)), "string" == typeof t && r[t]()
-		})
-	}), t.Typed = i;
-	var r = {
-		strings: ["These are the default values", "Try them", "Use your own!", ".."],
-		stringsElement: null,
-		typeSpeed: 0,
-		startDelay: 0,
-		backSpeed: 0,
-		shuffle: !1,
-		backDelay: 500,
-		loop: !1,
-		loopCount: !1,
-		showCursor: !0,
-		cursorChar: "|",
-		attr: null,
-		contentType: "html",
-		callback: function() {},
-		preStringTyped: function() {},
-		onStringTyped: function() {},
-		resetCallback: function() {}
-	}
-}(window, document, window.jQuery);
+    orbs.forEach((orb) => {
+      orb.fill = colorPalette.randomColor();
+    });
+  });
