@@ -58,3 +58,9 @@ body {
     background-color: #000; /* Set background color to black */
     background-image: url("https://www.transparenttextures.com/patterns/stardust.png");
 }
+
+.mtitle {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
